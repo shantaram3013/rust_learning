@@ -30,6 +30,7 @@ pub fn main() {
         Some(x) => x,
         None => {
             print!("Enter file name: ");
+            stdout.flush().expect("Flushing stdout failed!");
             match stdin.read_line(&mut line) {
                 Err(why) => panic!("Couldn't read from stdin: {}", why),
                 Ok(_) => (),
