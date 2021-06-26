@@ -3,9 +3,9 @@ extern crate parse_int;
 
 use clap::{App, Arg};
 use parse_int::parse;
-use std::io::Write;
-use std::fs::File;
 use std::env;
+use std::fs::File;
+use std::io::Write;
 
 pub fn main() {
     let stdin = std::io::stdin();
@@ -31,10 +31,7 @@ pub fn main() {
         None => {
             print!("Enter file name: ");
             stdout.flush().expect("Flushing stdout failed!");
-            match stdin.read_line(&mut line) {
-                Err(why) => panic!("Couldn't read from stdin: {}", why),
-                Ok(_) => (),
-            }
+            if let Err(why) = stdin.read_line(&mut line) { panic!("Error writing to temp file: {}", why) }
             line.trim()
         }
     };
@@ -47,23 +44,23 @@ pub fn main() {
         Err(why) => {
             err(&why.to_string());
             String::new()
-        },
+        }
         Ok(val) => val,
     };
 
-    let mut _lines: Vec<&str> = result.split("\n").collect();
+    let mut _lines: Vec<&str> = result.split('\n').collect();
 
     let mut lines: Vec<String> = Vec::new();
     for line in _lines {
-        if line.trim_end() != "" {
+        if !line.trim_end().is_empty() {
             lines.push(line.to_owned())
         };
     }
 
-    fn print_tasks(lines: &Vec<String>) {
+    fn print_tasks(lines: &[String]) {
         println!("****** Tasks ******");
         for (i, line) in lines.iter().enumerate() {
-            if line != "" {
+            if !line.is_empty() {
                 println!("{} {}", i, line)
             }
         }
@@ -80,11 +77,11 @@ pub fn main() {
                 if n == 0 {
                     break;
                 }
-            },
+            }
         };
         inp = inp.trim_end().to_owned();
 
-        let cmd: Vec<&str> = inp.split(" ").collect();
+        let cmd: Vec<&str> = inp.split(' ').collect();
         let action = cmd[0];
         if action == "add" {
             if cmd.len() >= 2 {
@@ -112,11 +109,9 @@ pub fn main() {
             }
         } else if action == "exit" {
             break;
-        } else {
-            if action != "" {
-                println!("Error: command not found: {}", cmd[0])
-            };
-        }
+        } else if !action.is_empty() {
+            println!("Error: command not found: {}", cmd[0])
+        };
     }
 
     let tmpdir = env::temp_dir();
@@ -125,14 +120,11 @@ pub fn main() {
     let mut file = File::create(&tmpfile).unwrap();
 
     for line in lines {
-        match writeln!(file, "{}", line) {
-            Err(why) => panic!("Error writing to temp file: {}", why),
-            Ok(_) =>()
-        }
-    };
+        if let Err(why) = writeln!(file, "{}", line) { panic!("Error writing to temp file: {}", why) };
+    }
 
     match std::fs::copy(&tmpfile, filename) {
         Err(why) => panic!("Error writing file: data possibly lost. {}", why),
-        Ok(_) => println!("Saved {} successfully.", filename)
+        Ok(_) => println!("Saved {} successfully.", filename),
     };
 }
