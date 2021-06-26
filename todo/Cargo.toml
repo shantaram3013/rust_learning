@@ -1,0 +1,8 @@
+[package]
+name = "todo" # the name of the package
+version = "0.1.0"    # the current version, obeying semver
+authors = ["shantaram <me@shantaram.xyz>"]
+
+[dependencies]
+clap = "2.33.3"
+parse_int = "0.5.0"
