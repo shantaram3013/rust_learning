@@ -31,13 +31,13 @@ pub fn main() {
         None => {
             print!("Enter file name: ");
             stdout.flush().expect("Flushing stdout failed!");
-            if let Err(why) = stdin.read_line(&mut line) { panic!("Error writing to temp file: {}", why) }
+            stdin.read_line(&mut line).expect("Error reading filename.");
             line.trim()
         }
     };
 
     fn err(msg: &str) {
-        println!("ERROR: {}", msg);
+        eprintln!("ERROR: {}", msg);
     }
 
     let result = match std::fs::read_to_string(filename) {
@@ -47,11 +47,9 @@ pub fn main() {
         }
         Ok(val) => val,
     };
-
-    let mut _lines: Vec<&str> = result.split('\n').collect();
-
+    
     let mut lines: Vec<String> = Vec::new();
-    for line in _lines {
+    for line in result.split('\n') {
         if !line.trim_end().is_empty() {
             lines.push(line.to_owned())
         };
@@ -60,58 +58,68 @@ pub fn main() {
     fn print_tasks(lines: &[String]) {
         println!("****** Tasks ******");
         for (i, line) in lines.iter().enumerate() {
-            if !line.is_empty() {
-                println!("{} {}", i, line)
-            }
+            println!("{} {}", i, line)
         }
     }
 
+    let mut inp = String::new();
     loop {
         print_tasks(&lines);
         print!("> ");
         stdout.flush().expect("Flushing stdout failed!");
-        let mut inp = String::new();
+        inp.clear();
         match stdin.read_line(&mut inp) {
             Err(why) => panic!("Couldn't read from stdin: {}", why),
-            Ok(n) => {
+            Ok(n) => { // handle Ctrl-D
                 if n == 0 {
                     break;
                 }
             }
         };
-        inp = inp.trim_end().to_owned();
 
-        let cmd: Vec<&str> = inp.split(' ').collect();
+        let cmd: Vec<&str> = inp.trim_end().split_whitespace().collect();
         let action = cmd[0];
-        if action == "add" {
-            if cmd.len() >= 2 {
+
+        match action {
+            "add" => {
                 let line = cmd[1..].join(" ").clone();
-                lines.push(line);
-            } else {
-                err("Too few arguments to rm")
-            }
-        } else if action == "rm" {
-            if cmd.len() >= 2 {
-                let idx = match parse::<i64>(cmd[1]) {
-                    Err(why) => {
-                        println!("Error parsing int from cmd {}: {}", cmd[1], why);
-                        -1
+                if cmd.len() >= 2 {
+                    if line.is_empty() {
+                        continue;
                     }
-                    Ok(val) => val,
-                };
-                if idx > 0 && idx < lines.len() as i64 {
-                    lines.remove(idx as usize);
+                    lines.push(line);
                 } else {
-                    err("Invalid index specified for rm");
+                    err("Too few arguments to rm")
                 }
-            } else {
-                err("Too few arguments to rm");
             }
-        } else if action == "exit" {
-            break;
-        } else if !action.is_empty() {
-            println!("Error: command not found: {}", cmd[0])
-        };
+            "rm" => {
+                if cmd.len() >= 2 {
+                    match parse::<usize>(cmd[1]) {
+                        Err(why) => {
+                            println!("Error parsing int from cmd {}: {}", cmd[1], why);
+                        }
+                        Ok(val) => {
+                            if val > 0 && val < lines.len() {
+                                lines.remove(val);
+                            } else {
+                                err("Invalid index specified for rm");
+                            }
+                        }
+                    };
+                } else {
+                    err("Too few arguments to rm");
+                }
+            } 
+            "exit" => {
+                break;
+            }
+            "" => {
+                /* pass */
+            }
+            _ => {
+                println!("Error: command not found: {}", cmd[0])
+            }
+        }
     }
 
     let tmpdir = env::temp_dir();
@@ -120,11 +128,9 @@ pub fn main() {
     let mut file = File::create(&tmpfile).unwrap();
 
     for line in lines {
-        if let Err(why) = writeln!(file, "{}", line) { panic!("Error writing to temp file: {}", why) };
+        writeln!(file, "{}", line).expect("Error writing to temp file");
     }
 
-    match std::fs::copy(&tmpfile, filename) {
-        Err(why) => panic!("Error writing file: data possibly lost. {}", why),
-        Ok(_) => println!("Saved {} successfully.", filename),
-    };
+    std::fs::copy(tmpfile, filename).expect("Error writing file: data possibly lost");
+    println!("Saved {} successfully.", filename);
 }
